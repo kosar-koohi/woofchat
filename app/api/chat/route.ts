@@ -1,24 +1,26 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { buildSystem, type DogProfile } from "@/lib/prompt";
+import { GoogleGenAI } from "@google/genai";
+import { buildSystemInstruction, type ChatMessage, type DogProfile } from "@/lib/prompt";
 import { getTier, getVisitorId, LIMITS } from "@/lib/entitlements";
 import { checkAndIncrement } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-5";
-
-const client = new Anthropic();
+// Free-tier model availability changes and is per-account. Check which models
+// your key can use at https://aistudio.google.com/rate-limit and override with
+// GEMINI_MODEL if this default is not on your tier.
+const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
 
 type Body = {
-  messages: Anthropic.MessageParam[];
+  messages: ChatMessage[];
   dog: DogProfile | null;
 };
 
 export async function POST(req: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
     return Response.json(
-      { error: "Server is missing ANTHROPIC_API_KEY. Copy .env.local.example to .env.local." },
+      { error: "Server is missing GEMINI_API_KEY. Add it to .env.local and restart." },
       { status: 500 },
     );
   }
@@ -55,16 +57,15 @@ export async function POST(req: Request) {
   // posting a longer array -- the cap is applied here, not in the browser.
   const trimmed = body.messages.slice(-limits.historyTurns * 2);
 
-  const stream = client.messages.stream({
-    model: MODEL,
-    max_tokens: 4096,
-    // Chat is high-volume and the questions are rarely hard; low effort keeps
-    // cost and latency down. Raise to "medium" if answers feel shallow.
-    output_config: { effort: "low" },
-    system: buildSystem(body.dog),
-    messages: trimmed,
-  });
+  // Stateless multi-turn: every prior turn is replayed as a step. `store: false`
+  // keeps Google from persisting the conversation server-side, so the history
+  // this app sends is the only history that exists.
+  const input = trimmed.map((m) => ({
+    type: m.role === "user" ? ("user_input" as const) : ("model_output" as const),
+    content: [{ type: "text" as const, text: m.content }],
+  }));
 
+  const ai = new GoogleGenAI({ apiKey });
   const encoder = new TextEncoder();
 
   const sse = new ReadableStream({
@@ -76,45 +77,43 @@ export async function POST(req: Request) {
       };
 
       try {
+        const stream = await ai.interactions.create({
+          model: MODEL,
+          input,
+          system_instruction: buildSystemInstruction(body.dog),
+          store: false,
+          stream: true,
+        });
+
         for await (const event of stream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
+          if (event.event_type === "step.delta" && event.delta.type === "text") {
             send("delta", { text: event.delta.text });
+          } else if (event.event_type === "error") {
+            console.error("[chat] stream event error", event.error);
+            send("error", { message: "The model stopped mid-answer. Try again." });
           }
         }
 
-        const final = await stream.finalMessage();
-        send("done", {
-          stopReason: final.stop_reason,
-          usage: {
-            input: final.usage.input_tokens,
-            output: final.usage.output_tokens,
-            cacheRead: final.usage.cache_read_input_tokens ?? 0,
-          },
-          quota: { used: quota.used, limit: quota.limit },
-        });
+        send("done", { quota: { used: quota.used, limit: quota.limit } });
       } catch (err) {
-        console.error("[chat] stream failed", err);
+        console.error("[chat] request failed", err);
 
-        let message = "Something went wrong reaching Claude. Try again.";
-        if (err instanceof Anthropic.RateLimitError) {
-          message = "Rate limited upstream. Give it a few seconds.";
-        } else if (err instanceof Anthropic.AuthenticationError) {
-          message = "The server's API key was rejected. Check ANTHROPIC_API_KEY.";
-        } else if (err instanceof Anthropic.APIConnectionError) {
-          message = "Could not reach the Claude API. Check your connection.";
+        const raw = err instanceof Error ? err.message : String(err);
+        let message = "Something went wrong reaching Gemini. Try again.";
+
+        if (/API key|API_KEY_INVALID|PERMISSION_DENIED|401|403/i.test(raw)) {
+          message = "The server's Gemini key was rejected. Check GEMINI_API_KEY.";
+        } else if (/quota|RESOURCE_EXHAUSTED|429/i.test(raw)) {
+          message =
+            "Hit the Gemini free-tier rate limit. Wait a minute, or check your limits in AI Studio.";
+        } else if (/not found|NOT_FOUND|404|not supported/i.test(raw)) {
+          message = `The model "${MODEL}" is not available to this key. Set GEMINI_MODEL in .env.local to one your tier allows.`;
         }
 
         send("error", { message });
       } finally {
         controller.close();
       }
-    },
-
-    cancel() {
-      stream.abort();
     },
   });
 

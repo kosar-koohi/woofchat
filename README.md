@@ -1,11 +1,11 @@
 # Woofchat
 
 A chat app for dog owners. Next.js front end, one server route that talks to
-Claude, a free tier with a daily cap, and a Pro tier stub ready for Stripe.
+the Gemini API, a free tier with a daily cap, and a Pro tier stub ready for Stripe.
 
 ## Run it
 
-1. Get an API key at https://console.anthropic.com/settings/keys
+1. Get a free API key at https://aistudio.google.com — no card required
 2. `cp .env.local.example .env.local` and paste the key in
 3. `npm run dev`
 4. Open http://localhost:3000
@@ -22,7 +22,7 @@ Claude, a free tier with a daily cap, and a Pro tier stub ready for Stripe.
 
 ### The key never reaches the browser
 
-`ANTHROPIC_API_KEY` is read server-side in the route handler only. Nothing in
+`GEMINI_API_KEY` is read server-side in the route handler only. Nothing in
 `app/page.tsx` or `components/` touches it. Don't prefix it with
 `NEXT_PUBLIC_` — that would ship it to every visitor.
 
@@ -50,13 +50,22 @@ Because this is a website, Apple's 30% doesn't apply. If you later wrap it as
 an iOS app, digital-only subscriptions must go through Apple IAP — that's the
 part of the plan worth deciding before you build the wrapper, not after.
 
-## Cost
+## Cost and limits
 
-Set by `ANTHROPIC_MODEL`, defaulting to `claude-opus-5` ($5 / $25 per million
-input / output tokens). The route runs at `effort: "low"` and caches the system
-prompt, so a typical exchange is small — but 10 free messages a day per visitor
-is real money at scale. Watch the `usage` numbers logged in the `done` event,
-and consider `claude-sonnet-5` for the free tier once you see actual traffic.
+Gemini free tier: no card, no spend, but it is rate limited (roughly 15
+requests/minute) and **Google may use free-tier traffic to improve their
+products**. Fine for building and testing; decide deliberately before real
+users are typing into it.
+
+Free-tier model availability is per-account and changes. If the default model
+is rejected, check what your key allows at
+https://aistudio.google.com/rate-limit and set `GEMINI_MODEL` in
+`.env.local`.
+
+The provider lives entirely in `app/api/chat/route.ts`. Switching to a paid
+provider later is one file; `lib/prompt.ts` carries over untouched. Re-test the
+emergency questions after any model change -- models differ in how tightly they
+hold refusal rules.
 
 ## Not done yet
 

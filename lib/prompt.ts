@@ -1,3 +1,5 @@
+export type ChatMessage = { role: "user" | "assistant"; content: string };
+
 export type DogProfile = {
   name?: string;
   breed?: string;
@@ -61,30 +63,20 @@ function describeDog(dog: DogProfile): string {
 }
 
 /**
- * Returns system blocks with a cache breakpoint after the frozen prefix.
- * The per-dog block is appended after the breakpoint so a profile edit does not
- * invalidate the cached prefix.
+ * The system instruction sent with every request.
+ *
+ * The frozen rules come first and the per-dog details last, so the stable part
+ * stays byte-identical across requests -- that ordering is what any prefix
+ * caching keys on, and it costs nothing to keep.
  */
-export function buildSystem(dog: DogProfile | null) {
-  const blocks: Array<{
-    type: "text";
-    text: string;
-    cache_control?: { type: "ephemeral" };
-  }> = [
-    {
-      type: "text",
-      text: BASE_SYSTEM,
-      cache_control: { type: "ephemeral" },
-    },
-  ];
-
+export function buildSystemInstruction(dog: DogProfile | null): string {
   const description = dog ? describeDog(dog) : "";
-  if (description) {
-    blocks.push({
-      type: "text",
-      text: `## The dog you are helping with\n${description}\n\nUse these details without asking for them again. If advice would change with information not listed here, ask for that one thing.`,
-    });
-  }
+  if (!description) return BASE_SYSTEM;
 
-  return blocks;
+  return `${BASE_SYSTEM}
+
+## The dog you are helping with
+${description}
+
+Use these details without asking for them again. If advice would change with information not listed here, ask for that one thing.`;
 }

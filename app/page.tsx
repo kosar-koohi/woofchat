@@ -2,9 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import DogProfileForm from "@/components/DogProfileForm";
-import type { DogProfile } from "@/lib/prompt";
-
-type Msg = { role: "user" | "assistant"; content: string };
+import type { ChatMessage, DogProfile } from "@/lib/prompt";
 
 const STORAGE_KEY = "woofchat.dog";
 
@@ -18,7 +16,7 @@ const STARTERS = [
 export default function Page() {
   const [dog, setDog] = useState<DogProfile | null>(null);
   const [editingDog, setEditingDog] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +58,7 @@ export default function Page() {
     setPaywalled(null);
     setDraft("");
 
-    const outgoing: Msg[] = [...messages, { role: "user", content: trimmed }];
+    const outgoing: ChatMessage[] = [...messages, { role: "user", content: trimmed }];
     setMessages([...outgoing, { role: "assistant", content: "" }]);
     setStreaming(true);
 
