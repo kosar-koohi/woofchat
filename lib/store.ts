@@ -1,6 +1,7 @@
 "use client";
 
 import { lbToKg, type ChatMessage, type DogProfile } from "@/lib/prompt";
+import { type Lang } from "@/lib/i18n";
 
 /**
  * Local persistence for dogs and their conversations.
@@ -20,6 +21,8 @@ export type Thread = {
   title: string;
   messages: ChatMessage[];
   updatedAt: number;
+  /** The model flagged the last reply as health-related. Drives the vet note. */
+  vet?: boolean;
 };
 
 export type Dog = DogProfile & { id: string };
@@ -28,6 +31,8 @@ export type Store = {
   dogs: Dog[];
   activeDogId: string | null;
   threads: Thread[];
+  /** UI language. Undefined until the owner picks one, so we can detect first. */
+  lang?: Lang;
 };
 
 const EMPTY: Store = { dogs: [], activeDogId: null, threads: [] };
@@ -41,6 +46,7 @@ export function loadStore(): Store {
       dogs: parsed.dogs ?? [],
       activeDogId: parsed.activeDogId ?? parsed.dogs?.[0]?.id ?? null,
       threads: parsed.threads ?? [],
+      lang: parsed.lang,
     };
   } catch {
     return EMPTY;

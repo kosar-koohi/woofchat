@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Logo from "@/components/Logo";
+import { useT } from "@/lib/i18n-context";
 
 /**
  * Splits a reply into a headline and up to three numbered steps.
@@ -31,13 +32,14 @@ export default function ShareCard({
   onClose: () => void;
 }) {
   const [status, setStatus] = useState<string | null>(null);
+  const t = useT();
   const { headline, steps } = toCard(answer);
 
   // The PNG is rendered by the server; this is the URL for both buttons.
   const cardUrl = `/api/share?title=${encodeURIComponent(title)}&answer=${encodeURIComponent(answer)}`;
 
   async function saveImage() {
-    setStatus("Rendering…");
+    setStatus(t.rendering);
     try {
       const res = await fetch(cardUrl);
       if (!res.ok) throw new Error(String(res.status));
@@ -49,18 +51,18 @@ export default function ShareCard({
       a.download = `woofchat-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
       a.click();
       URL.revokeObjectURL(url);
-      setStatus("Saved");
+      setStatus(t.saved);
     } catch {
-      setStatus("Could not render the image.");
+      setStatus(t.renderFailed);
     }
   }
 
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(new URL(cardUrl, location.origin).toString());
-      setStatus("Link copied");
+      setStatus(t.linkCopied);
     } catch {
-      setStatus("Clipboard blocked by the browser.");
+      setStatus(t.clipboardBlocked);
     }
   }
 
@@ -70,7 +72,7 @@ export default function ShareCard({
         className="share-wrap"
         role="dialog"
         aria-modal="true"
-        aria-label="Share this answer"
+        aria-label={t.shareAnswer}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="share-card">
@@ -89,22 +91,21 @@ export default function ShareCard({
           )}
 
           <div className="share-note">
-            Written by a robot, not a veterinarian. If it looks like an emergency,
-            call a vet.
+            {t.shareNote}
           </div>
 
           <div className="share-foot">
             <Logo size={20} />
-            <span className="share-tag">Ask about your dog</span>
+            <span className="share-tag">{t.shareTag}</span>
           </div>
         </div>
 
         <div className="share-actions">
           <button className="primary" onClick={saveImage}>
-            Save image
+            {t.saveImage}
           </button>
           <button className="ghost" onClick={copyLink}>
-            Copy link
+            {t.copyLink}
           </button>
           {status && <span className="share-status">{status}</span>}
         </div>

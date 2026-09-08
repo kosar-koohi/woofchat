@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { buildSystemInstruction, type ChatMessage, type DogProfile } from "@/lib/prompt";
 import { getTier, getVisitorId, LIMITS } from "@/lib/entitlements";
+import { createVetFilter } from "@/lib/vet-marker";
 import { checkAndIncrement } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
@@ -85,16 +86,22 @@ export async function POST(req: Request) {
           stream: true,
         });
 
+        const vetFilter = createVetFilter();
+
         for await (const event of stream) {
           if (event.event_type === "step.delta" && event.delta.type === "text") {
-            send("delta", { text: event.delta.text });
+            const text = vetFilter.take(event.delta.text);
+            if (text) send("delta", { text });
           } else if (event.event_type === "error") {
             console.error("[chat] stream event error", event.error);
             send("error", { message: "The model stopped mid-answer. Try again." });
           }
         }
 
-        send("done", { quota: { used: quota.used, limit: quota.limit } });
+        const tail = vetFilter.end();
+        if (tail.text) send("delta", { text: tail.text });
+
+        send("done", { vet: tail.vet, quota: { used: quota.used, limit: quota.limit } });
       } catch (err) {
         console.error("[chat] request failed", err);
 

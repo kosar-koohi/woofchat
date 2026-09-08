@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { BREEDS, OTHER } from "@/components/DogProfileForm";
+import { useT } from "@/lib/i18n-context";
 import {
   kgToLb,
   lbToKg,
-  pronoun,
   type Caregivers,
   type Children,
   type DogProfile,
@@ -13,26 +13,10 @@ import {
   type OtherPets,
 } from "@/lib/prompt";
 
-const HOMES: Array<[Home, string]> = [
-  ["apartment", "Apartment"],
-  ["house-yard", "House + yard"],
-  ["rural", "Rural"],
-];
-const CAREGIVERS: Array<[Caregivers, string]> = [
-  ["just-me", "Just me"],
-  ["shared", "Shared"],
-];
-const CHILDREN: Array<[Children, string]> = [
-  ["none", "None"],
-  ["under-5", "Under 5"],
-  ["5-12", "5–12"],
-  ["teens", "Teens"],
-];
-const PETS: Array<[OtherPets, string]> = [
-  ["dog", "Another dog"],
-  ["cat", "A cat"],
-  ["none", "None"],
-];
+const HOME_KEYS: Home[] = ["apartment", "house-yard", "rural"];
+const CARE_KEYS: Caregivers[] = ["just-me", "shared"];
+const CHILD_KEYS: Children[] = ["none", "under-5", "5-12", "teens"];
+const PET_KEYS: OtherPets[] = ["dog", "cat", "none"];
 
 function Ticks({ step }: { step: 0 | 1 | 2 }) {
   return (
@@ -93,7 +77,7 @@ export default function Onboarding({
   const [weightText, setWeightText] = useState("");
 
   const unit = form.weightUnit ?? "lb";
-  const p = pronoun(form);
+  const t = useT();
 
   function set<K extends keyof DogProfile>(key: K, value: DogProfile[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -119,17 +103,14 @@ export default function Onboarding({
       {step === 0 && (
         <section className="panel intro-panel">
           <Ticks step={0} />
-          <h1>Answers that fit your dog — and your home.</h1>
-          <p>
-            Breed, size and age shape the advice. So does an apartment, a toddler,
-            or a cat in the hallway. Tell me once.
-          </p>
+          <h1>{t.onbTitle}</h1>
+          <p>{t.onbBody}</p>
           <div className="panel-foot">
             <button className="on-dark" onClick={() => setStep(1)}>
-              Get started
+              {t.getStarted}
             </button>
             <button className="link-button" onClick={onSkip}>
-              Skip for now
+              {t.skipForNow}
             </button>
           </div>
         </section>
@@ -138,10 +119,10 @@ export default function Onboarding({
       {step === 1 && (
         <section className="panel">
           <Ticks step={1} />
-          <h2>The dog</h2>
+          <h2>{t.theDog}</h2>
 
           <label>
-            Name
+            {t.name}
             <input
               autoFocus
               value={form.name ?? ""}
@@ -151,7 +132,7 @@ export default function Onboarding({
           </label>
 
           <label>
-            Breed
+            {t.breed}
             <select
               value={breedIsOther ? OTHER : form.breed ?? ""}
               onChange={(e) => {
@@ -181,13 +162,13 @@ export default function Onboarding({
               value={form.breed ?? ""}
               onChange={(e) => set("breed", e.target.value)}
               placeholder="Border collie mix"
-              aria-label="Breed, typed"
+              aria-label={t.breedTyped}
             />
           )}
 
           <div className="row">
             <label>
-              Age
+              {t.age}
               <input
                 type="number"
                 min={0}
@@ -201,7 +182,7 @@ export default function Onboarding({
             </label>
 
             <div className="field weight-field">
-              <span className="field-label">Weight</span>
+              <span className="field-label">{t.weight}</span>
               <div className="weight">
                 <input
                   type="number"
@@ -233,10 +214,10 @@ export default function Onboarding({
 
           <div className="panel-foot row-buttons">
             <button className="ghost" onClick={() => setStep(0)}>
-              Back
+              {t.back}
             </button>
             <button className="primary" onClick={() => setStep(2)}>
-              Continue
+              {t.continue}
             </button>
           </div>
         </section>
@@ -245,31 +226,41 @@ export default function Onboarding({
       {step === 2 && (
         <section className="panel">
           <Ticks step={2} />
-          <h2>The household</h2>
+          <h2>{t.theHousehold}</h2>
 
-          <Chips label="Where you live" options={HOMES} value={form.home} onChange={(v) => set("home", v)} />
           <Chips
-            label={`Who looks after ${p.object}`}
-            options={CAREGIVERS}
+            label={t.whereYouLive}
+            options={HOME_KEYS.map((k) => [k, t.homes[k]] as [Home, string])}
+            value={form.home}
+            onChange={(v) => set("home", v)}
+          />
+          <Chips
+            label={t.whoLooksAfter(t.obj(form.sex))}
+            options={CARE_KEYS.map((k) => [k, t.caregivers[k]] as [Caregivers, string])}
             value={form.caregivers}
             onChange={(v) => set("caregivers", v)}
           />
           <Chips
-            label="Children at home"
-            options={CHILDREN}
+            label={t.childrenAtHome}
+            options={CHILD_KEYS.map((k) => [k, t.children[k]] as [Children, string])}
             value={form.children}
             onChange={(v) => set("children", v)}
           />
-          <Chips label="Other pets" options={PETS} value={form.otherPets} onChange={(v) => set("otherPets", v)} />
+          <Chips
+            label={t.otherPets}
+            options={PET_KEYS.map((k) => [k, t.pets[k]] as [OtherPets, string])}
+            value={form.otherPets}
+            onChange={(v) => set("otherPets", v)}
+          />
 
           <div className="panel-foot">
-            <p className="fine">A robot, not a veterinarian. For anything urgent, call a vet.</p>
+            <p className="fine">{t.onbFine}</p>
             <div className="row-buttons">
               <button className="ghost" onClick={() => setStep(1)}>
-                Back
+                {t.back}
               </button>
               <button className="primary" onClick={() => onDone(form)}>
-                Open the chat
+                {t.openChat}
               </button>
             </div>
           </div>

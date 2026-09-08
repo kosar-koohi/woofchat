@@ -6,6 +6,8 @@ import Logo from "@/components/Logo";
 import Onboarding from "@/components/Onboarding";
 import ShareCard from "@/components/ShareCard";
 import type { ChatMessage, DogProfile } from "@/lib/prompt";
+import { I18nProvider } from "@/lib/i18n-context";
+import { detectLang, dirOf, LANGUAGES, strings, type Lang } from "@/lib/i18n";
 import {
   describeDog,
   groupByDay,
@@ -20,13 +22,6 @@ import {
   type Thread,
 } from "@/lib/store";
 
-const STARTERS = [
-  "Pulls on the leash",
-  "How much to feed",
-  "Barks at other dogs",
-  "Crate at 4am",
-];
-
 export default function Page() {
   const [store, setStore] = useState<Store>({ dogs: [], activeDogId: null, threads: [] });
   const [ready, setReady] = useState(false);
@@ -37,6 +32,7 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [onboarding, setOnboarding] = useState(false);
   const [sharing, setSharing] = useState<{ title: string; answer: string } | null>(null);
+  const [lang, setLang] = useState<Lang>("en");
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -44,6 +40,7 @@ export default function Page() {
   useEffect(() => {
     const loaded = loadStore();
     setStore(loaded);
+    setLang(loaded.lang ?? detectLang());
     setReady(true);
     if (loaded.dogs.length === 0) setOnboarding(true);
   }, []);
@@ -70,6 +67,11 @@ export default function Page() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [activeThread?.messages, streaming]);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = dirOf(lang);
+  }, [lang]);
 
   function selectDog(id: string) {
     setStore((s) => ({ ...s, activeDogId: id }));
@@ -154,7 +156,7 @@ export default function Page() {
 
       if (!res.ok || !res.body) {
         const payload = await res.json().catch(() => null);
-        setError(payload?.message ?? payload?.error ?? "Request failed.");
+        setError(payload?.message ?? payload?.error ?? strings(lang).errRequestFailed);
         return;
       }
 
@@ -179,10 +181,18 @@ export default function Page() {
           const payload = JSON.parse(data);
           if (name === "delta") appendToAssistant(payload.text);
           else if (name === "error") setError(payload.message);
+          else if (name === "done") {
+            // The model only flags answers that touch the dog's health.
+            const vet = Boolean(payload.vet);
+            setStore((s) => ({
+              ...s,
+              threads: s.threads.map((th) => (th.id === threadId ? { ...th, vet } : th)),
+            }));
+          }
         }
       }
     } catch (err) {
-      if ((err as Error).name !== "AbortError") setError("Lost the connection mid-answer.");
+      if ((err as Error).name !== "AbortError") setError(strings(lang).errLostConnection);
     } finally {
       setStreaming(false);
       abortRef.current = null;
@@ -204,11 +214,19 @@ export default function Page() {
     }
   }
 
+  const t = strings(lang);
+  const dir = dirOf(lang);
   const messages = activeThread?.messages ?? [];
   const hasReply = messages.some((m) => m.role === "assistant" && m.content);
 
+  function changeLang(next: Lang) {
+    setLang(next);
+    setStore((s) => ({ ...s, lang: next }));
+  }
+
   return (
-    <main className="shell">
+    <I18nProvider lang={lang}>
+    <main className="shell" dir={dir}>
       <aside className="rail">
         <Logo size={24} markOnly onDark />
         <div className="rail-divider" />
@@ -217,8 +235,8 @@ export default function Page() {
           <button
             key={dog.id}
             className={`dog-pip${dog.id === store.activeDogId ? " active" : ""}`}
-            title={`${dog.name || "Unnamed dog"} — double-click to edit`}
-            aria-label={`Ask about ${dog.name || "this dog"}`}
+            title={`${dog.name || t.yourDog} — ${t.editHint}`}
+            aria-label={t.askAboutTitle(dog.name || t.yourDog)}
             onClick={() => selectDog(dog.id)}
             onDoubleClick={() => setEditingDog(dog)}
           >
@@ -229,18 +247,31 @@ export default function Page() {
         {store.dogs.length < MAX_DOGS && (
           <button
             className="dog-pip add"
-            aria-label="Add a dog"
-            title="Add a dog"
+            aria-label={t.addDog}
+            title={t.addDog}
             onClick={() => setEditingDog("new")}
           >
             +
           </button>
         )}
+        <select
+          className="lang-select"
+          value={lang}
+          onChange={(e) => changeLang(e.target.value as Lang)}
+          aria-label={t.language}
+          title={t.language}
+        >
+          {LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>
+              {l.code.toUpperCase()}
+            </option>
+          ))}
+        </select>
       </aside>
 
       <aside className="history">
         <div className="history-head">
-          <div className="name">{activeDog?.name || "Your dog"}</div>
+          <div className="name">{activeDog?.name || t.yourDog}</div>
           {activeDog && <div className="meta">{describeDog(activeDog)}</div>}
         </div>
 
@@ -263,7 +294,7 @@ export default function Page() {
           >
             <path d="M12 5v14M5 12h14" />
           </svg>
-          New question
+          {t.newQuestion}
         </button>
 
         <div className="history-list">
@@ -291,13 +322,10 @@ export default function Page() {
 
             {messages.length === 0 && (
               <div className="intro">
-                <h1>Ask about {activeDog?.name || "your dog"}.</h1>
-                <p>
-                  Answers use breed, age and weight. Not a substitute for your vet —
-                  for anything urgent, call one.
-                </p>
+                <h1>{t.askAboutTitle(activeDog?.name || t.yourDogInline)}</h1>
+                <p>{t.introBody}</p>
                 <div className="starters">
-                  {STARTERS.map((s) => (
+                  {t.starters.map((s) => (
                     <button key={s} className="starter" onClick={() => send(s)}>
                       {s}
                     </button>
@@ -312,36 +340,39 @@ export default function Page() {
               </div>
             ))}
 
-            {hasReply && !streaming && (
+            {/* Only shown when the model flagged the answer as health-related. */}
+            {hasReply && !streaming && activeThread?.vet && (
               <div className="disclaimer">
                 <p>
-                  <strong>Woofchat is a robot, not a veterinarian.</strong> Training
-                  answers are general. Anything urgent — pain, sudden change, trouble
-                  breathing — is a vet call, not a chat.
+                  <strong>{t.disclaimerStrong}</strong> {t.disclaimerRest}
                 </p>
-                <div className="disclaimer-actions">
-                  <a
-                    className="vet-button"
-                    href="https://www.google.com/maps/search/emergency+vet+near+me"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Find a vet near me
-                  </a>
-                  <button
-                    className="vet-button"
-                    onClick={() => {
-                      const last = [...messages].reverse().find(
-                        (m) => m.role === "assistant" && m.content,
-                      );
-                      if (last && activeThread) {
-                        setSharing({ title: activeThread.title, answer: last.content });
-                      }
-                    }}
-                  >
-                    Share this answer
-                  </button>
-                </div>
+                <a
+                  className="vet-button"
+                  href="https://www.google.com/maps/search/emergency+vet+near+me"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t.findVet}
+                </a>
+              </div>
+            )}
+
+            {/* Sharing is independent of the vet note -- any answer can be shared. */}
+            {hasReply && !streaming && (
+              <div className="answer-actions">
+                <button
+                  className="vet-button"
+                  onClick={() => {
+                    const last = [...messages]
+                      .reverse()
+                      .find((m) => m.role === "assistant" && m.content);
+                    if (last && activeThread) {
+                      setSharing({ title: activeThread.title, answer: last.content });
+                    }
+                  }}
+                >
+                  {t.shareAnswer}
+                </button>
               </div>
             )}
 
@@ -359,7 +390,7 @@ export default function Page() {
           <textarea
             value={draft}
             rows={1}
-            placeholder={`Ask about ${activeDog?.name || "your dog"}…`}
+            placeholder={t.askAbout(activeDog?.name || t.yourDogInline)}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -370,11 +401,11 @@ export default function Page() {
           />
           {streaming ? (
             <button type="button" className="send" onClick={() => abortRef.current?.abort()}>
-              Stop
+              {t.stop}
             </button>
           ) : (
             <button type="submit" className="send" disabled={!draft.trim() || !activeDog}>
-              Send
+              {t.send}
             </button>
           )}
         </form>
@@ -414,5 +445,6 @@ export default function Page() {
         />
       )}
     </main>
+    </I18nProvider>
   );
 }

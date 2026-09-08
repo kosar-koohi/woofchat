@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/lib/i18n-context";
 import {
   kgToLb,
   lbToKg,
-  pronoun,
   type Caregivers,
   type Children,
   type DogProfile,
@@ -52,26 +52,10 @@ export const BREEDS = [
 ];
 export const OTHER = "Other — type it below";
 
-const HOMES: Array<[Home, string]> = [
-  ["apartment", "Apartment"],
-  ["house-yard", "House with a yard"],
-  ["rural", "Rural / farm"],
-];
-const CAREGIVERS: Array<[Caregivers, string]> = [
-  ["just-me", "Just me"],
-  ["shared", "Shared with others"],
-];
-const CHILDREN: Array<[Children, string]> = [
-  ["none", "None"],
-  ["under-5", "Under 5"],
-  ["5-12", "5–12"],
-  ["teens", "Teens"],
-];
-const PETS: Array<[OtherPets, string]> = [
-  ["dog", "Another dog"],
-  ["cat", "A cat"],
-  ["none", "None"],
-];
+const HOME_KEYS: Home[] = ["apartment", "house-yard", "rural"];
+const CARE_KEYS: Caregivers[] = ["just-me", "shared"];
+const CHILD_KEYS: Children[] = ["none", "under-5", "5-12", "teens"];
+const PET_KEYS: OtherPets[] = ["dog", "cat", "none"];
 
 /** Chip row. Clicking the selected chip clears it -- every field is optional. */
 function ChipGroup<T extends string>({
@@ -156,7 +140,7 @@ export default function DogProfileForm({
     }
   }
 
-  const p = pronoun(form);
+  const t = useT();
   const converted =
     typeof form.weightLb === "number"
       ? unit === "lb"
@@ -170,13 +154,12 @@ export default function DogProfileForm({
         className="sheet"
         role="dialog"
         aria-modal="true"
-        aria-label="Dog profile"
+        aria-label={t.profileTitle}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2>{form.name?.trim() || "Your dog"}</h2>
+        <h2>{form.name?.trim() || t.profileTitle}</h2>
         <p className="hint">
-          All optional. The more you fill in, the more specific the answers.
-          Stored on this device only.
+          {t.profileHint}
         </p>
 
         <form
@@ -186,7 +169,7 @@ export default function DogProfileForm({
           }}
         >
           <label>
-            Name
+            {t.name}
             <input
               value={form.name ?? ""}
               onChange={(e) => set("name", e.target.value)}
@@ -195,7 +178,7 @@ export default function DogProfileForm({
           </label>
 
           <label>
-            Breed
+            {t.breed}
             <select
               value={breedIsOther ? OTHER : form.breed ?? ""}
               onChange={(e) => {
@@ -225,13 +208,13 @@ export default function DogProfileForm({
               value={form.breed ?? ""}
               onChange={(e) => set("breed", e.target.value)}
               placeholder="Border collie mix"
-              aria-label="Breed, typed"
+              aria-label={t.breedTyped}
             />
           )}
 
           <div className="row">
             <label>
-              Age (years)
+              {t.ageYears}
               <input
                 type="number"
                 min={0}
@@ -245,7 +228,7 @@ export default function DogProfileForm({
             </label>
 
             <div className="field weight-field">
-              <span className="field-label">Weight</span>
+              <span className="field-label">{t.weight}</span>
               <div className="weight">
                 <input
                   type="number"
@@ -279,7 +262,7 @@ export default function DogProfileForm({
 
           <div className="row">
             <label>
-              Sex
+              {t.sex}
               <select
                 value={form.sex ?? ""}
                 onChange={(e) =>
@@ -287,8 +270,8 @@ export default function DogProfileForm({
                 }
               >
                 <option value="">—</option>
-                <option value="female">Female</option>
-                <option value="male">Male</option>
+                <option value="female">{t.female}</option>
+                <option value="male">{t.male}</option>
               </select>
             </label>
 
@@ -298,54 +281,54 @@ export default function DogProfileForm({
                 checked={form.neutered ?? false}
                 onChange={(e) => set("neutered", e.target.checked)}
               />
-              Neutered / spayed
+              {t.neutered}
             </label>
           </div>
 
           <div className="divider" />
-          <div className="section-label">{p.possessive} home</div>
+          <div className="section-label">{t.homeOf(t.poss(form.sex))}</div>
 
           <ChipGroup
-            label="Where you live"
-            options={HOMES}
+            label={t.whereYouLive}
+            options={HOME_KEYS.map((k) => [k, t.homes[k]] as [Home, string])}
             value={form.home}
             onChange={(v) => set("home", v)}
           />
           <ChipGroup
-            label={`Who looks after ${p.object}`}
-            options={CAREGIVERS}
+            label={t.whoLooksAfter(t.obj(form.sex))}
+            options={CARE_KEYS.map((k) => [k, t.caregivers[k]] as [Caregivers, string])}
             value={form.caregivers}
             onChange={(v) => set("caregivers", v)}
           />
           <ChipGroup
-            label="Children at home"
-            options={CHILDREN}
+            label={t.childrenAtHome}
+            options={CHILD_KEYS.map((k) => [k, t.children[k]] as [Children, string])}
             value={form.children}
             onChange={(v) => set("children", v)}
           />
           <ChipGroup
-            label="Other pets"
-            options={PETS}
+            label={t.otherPets}
+            options={PET_KEYS.map((k) => [k, t.pets[k]] as [OtherPets, string])}
             value={form.otherPets}
             onChange={(v) => set("otherPets", v)}
           />
 
           <label>
-            Anything else worth knowing
+            {t.anythingElse}
             <textarea
               rows={2}
               value={form.notes ?? ""}
               onChange={(e) => set("notes", e.target.value)}
-              placeholder="Rescue, nervous around men, grain-free diet…"
+              placeholder={t.notesPlaceholder}
             />
           </label>
 
           <div className="actions">
             <button type="button" className="ghost" onClick={onClose}>
-              Skip
+              {t.skip}
             </button>
             <button type="submit" className="primary">
-              Save
+              {t.save}
             </button>
           </div>
         </form>

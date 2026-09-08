@@ -352,3 +352,25 @@ input, textarea, select { font: inherit; color: inherit; }
 .share-status { font-size: 12px; color: var(--muted); }
 
 .disclaimer-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ---- language + RTL ---- */
+.lang-select {
+  margin-top: auto; background: transparent; color: var(--p300);
+  border: 1px solid var(--p800); border-radius: 8px;
+  padding: 5px 4px; font-size: 11px; text-align: center;
+}
+.lang-select:hover { color: var(--p100); border-color: var(--p700); }
+.lang-select option { color: var(--ink); background: var(--surface); }
+
+.answer-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+[dir="rtl"] .history { border-right: 0; border-left: 1px solid var(--line); }
+[dir="rtl"] .msg.user { border-radius: 16px 16px 16px 4px; }
+[dir="rtl"] .share-note { border-left: 0; border-right: 3px solid var(--accent); }
+[dir="rtl"] .share-tag,
+[dir="rtl"] .weight input { border-radius: 0 9px 9px 0; }
+[dir="rtl"] .weight input { border-right: 1px solid var(--line); border-left: 0; }
+[dir="rtl"] .unit { border-left: 0; border-right: 0; }
+[dir="rtl"] .unit.right { border-radius: 9px 0 0 9px; border-left: 1px solid var(--line); }
+[dir="rtl"] .thread-item { text-align: right; }
+[dir="rtl"] .share-tag { margin-left: 0; margin-right: auto; }
