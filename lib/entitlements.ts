@@ -5,9 +5,9 @@ export type Tier = "free" | "pro";
 
 export const LIMITS = {
   free: {
-    messagesPerDay: 10,
+    messagesPerDay: 1000,
     historyTurns: 6, // how far back the model can see
-    profiles: 1,
+    profiles: 5,
   },
   pro: {
     messagesPerDay: Infinity,
