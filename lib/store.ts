@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChatMessage, DogProfile } from "@/lib/prompt";
+import { lbToKg, type ChatMessage, type DogProfile } from "@/lib/prompt";
 
 /**
  * Local persistence for dogs and their conversations.
@@ -86,7 +86,12 @@ export function describeDog(dog: Dog): string {
   if (typeof dog.ageYears === "number") {
     bits.push(dog.ageYears < 1 ? `${Math.round(dog.ageYears * 12)} mo` : `${dog.ageYears} yr`);
   }
-  if (typeof dog.weightLb === "number") bits.push(`${dog.weightLb} lb`);
+  if (typeof dog.weightLb === "number") {
+    // Show the unit the owner chose, not the one we store in.
+    const kg = (dog.weightUnit ?? "lb") === "kg";
+    const value = kg ? lbToKg(dog.weightLb) : dog.weightLb;
+    bits.push(`${Math.round(value * 10) / 10} ${kg ? "kg" : "lb"}`);
+  }
   return bits.join(" · ");
 }
 

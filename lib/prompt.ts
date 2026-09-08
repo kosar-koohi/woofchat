@@ -1,14 +1,48 @@
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
+export type Home = "apartment" | "house-yard" | "rural";
+export type Caregivers = "just-me" | "shared";
+export type Children = "none" | "under-5" | "5-12" | "teens";
+export type OtherPets = "dog" | "cat" | "none";
+
 export type DogProfile = {
   name?: string;
   breed?: string;
   ageYears?: number;
+  /** Always stored in pounds. The lb/kg toggle is a display choice only. */
   weightLb?: number;
+  /** Which unit the owner entered, so the form reopens the way they left it. */
+  weightUnit?: "lb" | "kg";
   sex?: "male" | "female";
   neutered?: boolean;
+  /** Household context -- an apartment or a toddler changes the advice. */
+  home?: Home;
+  caregivers?: Caregivers;
+  children?: Children;
+  otherPets?: OtherPets;
   notes?: string;
 };
+
+export const LB_PER_KG = 2.2046226218;
+
+export function lbToKg(lb: number): number {
+  return lb / LB_PER_KG;
+}
+
+export function kgToLb(kg: number): number {
+  return kg * LB_PER_KG;
+}
+
+/** she / he / they, from the sex field. Used in UI labels and the prompt. */
+export function pronoun(dog: Pick<DogProfile, "sex">): {
+  subject: string;
+  object: string;
+  possessive: string;
+} {
+  if (dog.sex === "female") return { subject: "she", object: "her", possessive: "her" };
+  if (dog.sex === "male") return { subject: "he", object: "him", possessive: "his" };
+  return { subject: "they", object: "them", possessive: "their" };
+}
 
 /**
  * Frozen prefix. Everything here is byte-stable across every request so it can
@@ -58,6 +92,32 @@ function describeDog(dog: DogProfile): string {
   if (dog.sex) {
     bits.push(`Sex: ${dog.sex}${dog.neutered ? " (neutered/spayed)" : ""}`);
   }
+
+  const HOME: Record<Home, string> = {
+    apartment: "an apartment",
+    "house-yard": "a house with a yard",
+    rural: "a rural property or farm",
+  };
+  const CHILDREN: Record<Children, string> = {
+    none: "no children at home",
+    "under-5": "a child under 5 at home",
+    "5-12": "children aged 5-12 at home",
+    teens: "teenagers at home",
+  };
+  const PETS: Record<OtherPets, string> = {
+    dog: "another dog in the household",
+    cat: "a cat in the household",
+    none: "no other pets",
+  };
+
+  if (dog.home) bits.push(`Lives in: ${HOME[dog.home]}`);
+  if (dog.caregivers) {
+    bits.push(
+      `Care: ${dog.caregivers === "just-me" ? "the owner alone" : "shared between several people"}`,
+    );
+  }
+  if (dog.children) bits.push(`Children: ${CHILDREN[dog.children]}`);
+  if (dog.otherPets) bits.push(`Other pets: ${PETS[dog.otherPets]}`);
   if (dog.notes) bits.push(`Owner notes: ${dog.notes}`);
   return bits.join("\n");
 }

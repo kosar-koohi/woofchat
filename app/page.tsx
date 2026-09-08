@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import DogProfileForm from "@/components/DogProfileForm";
 import Logo from "@/components/Logo";
+import Onboarding from "@/components/Onboarding";
+import ShareCard from "@/components/ShareCard";
 import type { ChatMessage, DogProfile } from "@/lib/prompt";
 import {
   describeDog,
@@ -33,6 +35,8 @@ export default function Page() {
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [onboarding, setOnboarding] = useState(false);
+  const [sharing, setSharing] = useState<{ title: string; answer: string } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -41,7 +45,7 @@ export default function Page() {
     const loaded = loadStore();
     setStore(loaded);
     setReady(true);
-    if (loaded.dogs.length === 0) setEditingDog("new");
+    if (loaded.dogs.length === 0) setOnboarding(true);
   }, []);
 
   const activeDog = useMemo(
@@ -315,14 +319,29 @@ export default function Page() {
                   answers are general. Anything urgent — pain, sudden change, trouble
                   breathing — is a vet call, not a chat.
                 </p>
-                <a
-                  className="vet-button"
-                  href="https://www.google.com/maps/search/emergency+vet+near+me"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Find a vet near me
-                </a>
+                <div className="disclaimer-actions">
+                  <a
+                    className="vet-button"
+                    href="https://www.google.com/maps/search/emergency+vet+near+me"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Find a vet near me
+                  </a>
+                  <button
+                    className="vet-button"
+                    onClick={() => {
+                      const last = [...messages].reverse().find(
+                        (m) => m.role === "assistant" && m.content,
+                      );
+                      if (last && activeThread) {
+                        setSharing({ title: activeThread.title, answer: last.content });
+                      }
+                    }}
+                  >
+                    Share this answer
+                  </button>
+                </div>
               </div>
             )}
 
@@ -366,6 +385,32 @@ export default function Page() {
           initial={editingDog === "new" ? null : editingDog}
           onSave={saveDog}
           onClose={() => setEditingDog(null)}
+        />
+      )}
+
+      {onboarding && (
+        <div className="overlay">
+          <Onboarding
+            onDone={(profile) => {
+              const dog: Dog = { ...profile, id: newId() };
+              setStore((s) => ({ ...s, dogs: [...s.dogs, dog], activeDogId: dog.id }));
+              setOnboarding(false);
+            }}
+            onSkip={() => {
+              // Still need a dog to attach threads to, even an empty one.
+              const dog: Dog = { id: newId() };
+              setStore((s) => ({ ...s, dogs: [...s.dogs, dog], activeDogId: dog.id }));
+              setOnboarding(false);
+            }}
+          />
+        </div>
+      )}
+
+      {sharing && (
+        <ShareCard
+          title={sharing.title}
+          answer={sharing.answer}
+          onClose={() => setSharing(null)}
         />
       )}
     </main>
