@@ -1,0 +1,118 @@
+:root {
+  --bg: #fbf9f6;
+  --surface: #ffffff;
+  --border: #e6e0d8;
+  --ink: #22201d;
+  --muted: #7a736b;
+  --accent: #b4552d;
+  --accent-soft: #fdf0e9;
+  --danger: #a3341f;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+button { font: inherit; cursor: pointer; }
+input, textarea { font: inherit; color: inherit; }
+
+/* ---- layout ---- */
+.shell { display: flex; flex-direction: column; height: 100dvh; }
+
+.bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.brand { display: flex; align-items: center; gap: 8px; letter-spacing: -0.01em; }
+.mark { font-size: 18px; }
+.bar-right { display: flex; align-items: center; gap: 12px; }
+.quota { color: var(--muted); font-size: 13px; }
+
+.scroll { flex: 1; overflow-y: auto; }
+.thread {
+  max-width: 720px; margin: 0 auto; padding: 32px 20px 8px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+/* ---- intro ---- */
+.intro h1 { font-size: 28px; letter-spacing: -0.02em; margin: 0 0 8px; }
+.intro p { color: var(--muted); margin: 0 0 24px; max-width: 44ch; }
+.starters { display: flex; flex-wrap: wrap; gap: 8px; }
+.starter {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; padding: 8px 14px; color: var(--ink);
+}
+.starter:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---- messages ---- */
+.msg { white-space: pre-wrap; }
+.msg.user {
+  align-self: flex-end; max-width: 80%;
+  background: var(--accent-soft); border: 1px solid #f2dccf;
+  border-radius: 16px 16px 4px 16px; padding: 10px 14px;
+}
+.msg.assistant { align-self: stretch; }
+.dots { color: var(--muted); }
+
+/* ---- notices ---- */
+.notice { border-radius: 12px; padding: 14px 16px; font-size: 14px; }
+.notice.error { background: #fdf1ee; border: 1px solid #f0cfc5; color: var(--danger); }
+.notice.paywall { background: var(--surface); border: 1px solid var(--border); }
+.notice.paywall p { color: var(--muted); margin: 6px 0 14px; }
+
+/* ---- composer ---- */
+.composer {
+  display: flex; gap: 10px; align-items: flex-end;
+  max-width: 720px; width: 100%; margin: 0 auto; padding: 12px 20px 20px;
+}
+.composer textarea {
+  flex: 1; resize: none; min-height: 46px; max-height: 180px;
+  padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface);
+}
+.composer textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+/* ---- buttons ---- */
+.primary {
+  background: var(--accent); color: #fff; border: 0;
+  border-radius: 10px; padding: 12px 18px;
+}
+.primary:disabled { opacity: 0.45; cursor: not-allowed; }
+.ghost {
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px 14px; color: var(--ink);
+}
+.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---- profile sheet ---- */
+.overlay {
+  position: fixed; inset: 0; background: rgba(34, 32, 29, 0.35);
+  display: grid; place-items: center; padding: 20px; z-index: 10;
+}
+.sheet {
+  background: var(--surface); border-radius: 16px; padding: 24px;
+  width: min(440px, 100%); max-height: 90dvh; overflow-y: auto;
+  border: 1px solid var(--border);
+}
+.sheet h2 { margin: 0 0 4px; font-size: 20px; letter-spacing: -0.01em; }
+.hint { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+.sheet form { display: flex; flex-direction: column; gap: 14px; }
+.sheet label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--muted); }
+.sheet input:not([type="checkbox"]), .sheet select, .sheet textarea {
+  border: 1px solid var(--border); border-radius: 9px;
+  padding: 9px 11px; background: var(--bg); color: var(--ink);
+  font-size: 15px;
+}
+.sheet .row { display: flex; gap: 12px; }
+.sheet .row > label { flex: 1; }
+.sheet label.check { flex-direction: row; align-items: center; gap: 8px; align-self: flex-end; padding-bottom: 10px; }
+.actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
